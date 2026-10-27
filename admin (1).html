@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>MediLab Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: petrol top bar, summary tiles, then a lab-register style table with status dropdowns. */
+:root{
+  --ink:#14253A; --navy:#0A2A55; --petrol:#0B5FB0; --petrol-2:#084C8D; --ground:#F3F5F8; --paper:#FFFFFF; --line:#DDE4EC; --muted:#5B6B7D;
+  --plasma:#0E9AA0; --plasma-ink:#FFFFFF; --teal:#0E9AA0; --teal-ink:#07757B; --teal-tint:#E0F4F4; --blue-tint:#E6F0FB;
+  --pending-bg:#FFF1D6; --pending-fg:#7A4A05;
+  --ok-bg:#DDF3E7; --ok-fg:#12603F;
+  --bad-bg:#FBE3E5; --bad-fg:#8C1B23;
+  --display:'Bricolage Grotesque',system-ui,sans-serif; --body:'Figtree',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--plasma);outline-offset:2px}
+.wrap{width:min(1240px,100%);margin-inline:auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:var(--display);margin:0;letter-spacing:-.02em;color:var(--navy)}
+
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(180deg,#E6F0FB 0%,#F3F5F8 100%)}
+.login-card{width:min(420px,100%);background:#fff;border-radius:18px;padding:32px;border:1px solid var(--line);box-shadow:0 20px 50px rgba(10,42,85,.12)}
+.logo{display:flex;align-items:center;gap:10px;font:800 24px/1 var(--display);letter-spacing:-.02em;color:var(--petrol)}
+.logo svg{width:28px;height:28px}
+.login-card h1{font-size:1.6rem;font-weight:800;margin:22px 0 6px}
+.login-card p{margin:0 0 22px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-weight:600;font-size:14px}
+.field input,.field select{min-height:48px;border:1.5px solid var(--line);border-radius:10px;padding:0 14px;background:#FFFFFF;width:100%}
+.field input:focus{outline:none;border-color:var(--petrol-2);box-shadow:0 0 0 4px rgba(21,101,168,.14)}
+.msg{display:none;margin:0 0 14px;padding:11px 14px;border-radius:10px;background:var(--bad-bg);color:var(--bad-fg);font-weight:500;font-size:14px}
+.msg.show{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border-radius:10px;border:0;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--petrol);color:#fff;width:100%}
+.btn-primary:hover:not(:disabled){background:var(--petrol-2)}
+.btn:disabled{opacity:.65;cursor:progress}
+.back{display:block;text-align:center;margin-top:16px;color:var(--muted);font-size:14px}
+
+/* dashboard */
+.bar{background:var(--petrol);color:#fff}
+.bar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;flex-wrap:wrap}
+.bar .logo{color:#fff;font-size:20px}
+.bar .logo small{font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#fff;margin-left:6px;padding:5px 8px;background:var(--teal);border-radius:6px}
+.bar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar-actions .stamp{font:400 12.5px/1 var(--mono);color:rgba(255,255,255,.65);margin-right:6px}
+.btn-line{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);min-height:40px;padding:0 14px}
+.btn-line:hover{background:rgba(255,255,255,.1)}
+main{padding-block:28px 56px}
+.page-title{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.page-title h1{font-size:clamp(1.6rem,3.5vw,2.2rem);font-weight:800}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.tile:hover{border-color:var(--petrol-2)}
+.tile.on{border-color:var(--petrol);box-shadow:0 0 0 2px var(--petrol) inset}
+.tile span{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.tile span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--dot,#9DB0B3)}
+.tile b{font:800 2rem/1 var(--display);color:var(--navy)}
+.tile[data-f="Pending"]{--dot:#E8A33D}
+.tile[data-f="Confirmed"]{--dot:#2BA173}
+.tile[data-f="Cancelled"]{--dot:#C7404A}
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.tools input,.tools select{min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;background:#fff}
+.tools input[type=search]{flex:1 1 240px;min-width:0}
+.table-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th{font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:14px 16px;background:#F3F7FB;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:14px 16px;border-bottom:1px solid #E7EDF4;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#F6F9FC}
+tr.today td:first-child{box-shadow:inset 4px 0 0 var(--plasma)}
+.id{font:500 14px/1 var(--mono);color:var(--petrol);white-space:nowrap}
+.cust b{display:block;font-weight:600}
+.cust span{display:block;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.when b{display:block;font-weight:600;white-space:nowrap}
+.when span{font:400 13px/1.4 var(--mono);color:var(--muted)}
+.created{font:400 12.5px/1.4 var(--mono);color:var(--muted);white-space:nowrap}
+.status{min-height:40px;min-width:134px;border-radius:99px;border:0;padding:0 14px;font-weight:600;cursor:pointer;appearance:auto}
+.status[data-s="Pending"]{background:var(--pending-bg);color:var(--pending-fg)}
+.status[data-s="Confirmed"]{background:var(--ok-bg);color:var(--ok-fg)}
+.status[data-s="Cancelled"]{background:var(--bad-bg);color:var(--bad-fg)}
+.status:disabled{opacity:.6;cursor:progress}
+.empty{padding:44px 20px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;max-width:calc(100% - 32px);font-weight:500}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:#8C1B23}
+[hidden]{display:none!important}
+
+@media (max-width:860px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  table{min-width:0}
+  thead{display:none}
+  tbody tr{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  tbody tr:last-child{border-bottom:0}
+  td{padding:0;border:0}
+  td.c-id{grid-column:1}
+  td.c-status{grid-column:2;grid-row:1}
+  td.c-cust,td.c-svc,td.c-when,td.c-created{grid-column:1/-1}
+  td[data-l]::before{content:attr(data-l);display:block;font:500 10.5px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  td.c-id::before,td.c-status::before{display:none}
+  tr.today td:first-child{box-shadow:none}
+  tr.today{box-shadow:inset 4px 0 0 var(--plasma)}
+}
+#refresh{background:var(--teal);border-color:var(--teal);font-weight:600}
+#refresh:hover{background:var(--teal-ink);border-color:var(--teal-ink)}
+.bar{box-shadow:0 4px 14px rgba(11,95,176,.25)}
+.tile{box-shadow:0 1px 2px rgba(10,42,85,.04)}
+.tile.on{border-color:var(--petrol);box-shadow:0 0 0 2px var(--petrol) inset;background:var(--blue-tint)}
+.table-card{box-shadow:0 10px 30px rgba(10,42,85,.07)}
+th{color:var(--navy);background:#F3F7FB}
+.id{color:var(--petrol)}
+.tools input:focus,.tools select:focus{outline:none;border-color:var(--petrol);box-shadow:0 0 0 4px rgba(11,95,176,.14)}
+.status{font-size:14px}
+.status[data-s="Confirmed"]{box-shadow:inset 0 0 0 1.5px #9AD8B6}
+tr.today td:first-child{box-shadow:inset 4px 0 0 var(--teal)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <form class="login-card" id="login-form" novalidate>
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6v4a3 3 0 0 1-6 0z" fill="#0E9AA0"/><path d="M9 3v13a3 3 0 0 0 6 0V3M7.5 3h9" stroke="#0B5FB0" stroke-width="1.8" stroke-linecap="round"/></svg>MediLab</div>
+    <h1>Admin login</h1>
+    <p>Enter the admin password to manage appointments.</p>
+    <div class="msg" id="login-msg" role="alert"></div>
+    <div class="field">
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="current-password" placeholder="Enter password" required>
+    </div>
+    <button class="btn btn-primary" id="login-btn" type="submit">Sign in</button>
+    <a class="back" href="index.html">&larr; Back to website</a>
+  </form>
+</div>
+
+<!-- DASHBOARD -->
+<div id="app" hidden>
+  <header class="bar">
+    <div class="wrap">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" width="26" height="26" aria-hidden="true"><path d="M9 12h6v4a3 3 0 0 1-6 0z" fill="#22C7E8"/><path d="M9 3v13a3 3 0 0 0 6 0V3M7.5 3h9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>MediLab <small>Admin</small></div>
+      <div class="bar-actions">
+        <span class="stamp" id="stamp"></span>
+        <button class="btn btn-line" id="refresh" type="button">Refresh</button>
+        <a class="btn btn-line" href="index.html" style="text-decoration:none">Website</a>
+        <button class="btn btn-line" id="logout" type="button">Log out</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="page-title"><h1>Appointments</h1></div>
+    <div class="tiles" id="tiles">
+      <button class="tile on" data-f="all" type="button"><span>All</span><b id="n-all">0</b></button>
+      <button class="tile" data-f="Pending" type="button"><span>Pending</span><b id="n-pending">0</b></button>
+      <button class="tile" data-f="Confirmed" type="button"><span>Confirmed</span><b id="n-confirmed">0</b></button>
+      <button class="tile" data-f="Cancelled" type="button"><span>Cancelled</span><b id="n-cancelled">0</b></button>
+    </div>
+    <div class="tools">
+      <input type="search" id="q" placeholder="Search name, email, phone or Booking ID" aria-label="Search bookings">
+      <select id="scope" aria-label="Date range">
+        <option value="all">All dates</option>
+        <option value="today">Today</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="past">Past</option>
+      </select>
+      <select id="sort" aria-label="Sort order">
+        <option value="soonest">Appointment: soonest first</option>
+        <option value="newest">Newest booking first</option>
+      </select>
+    </div>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Booking ID</th><th>Customer</th><th>Service</th><th>Appointment</th><th>Status</th><th>Booked on</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyuF5lBmokLFwwUKxJX1Xvqphr4b0fQXEq8T230Z3p6BR3M8i_f9BvznZ1507AdsGcbGg/exec';
+const SLOTS = ['11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];
+const STATUSES = ['Pending','Confirmed','Cancelled'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = (n) => String(n).padStart(2,'0');
+const t0 = new Date();
+const TODAY_KEY = t0.getFullYear() + '-' + pad(t0.getMonth()+1) + '-' + pad(t0.getDate());
+
+const state = { pw:'', rows:[], filter:'all', timer:null };
+
+function store(get, val){
+  try{ if (get === 'set') sessionStorage.setItem('medilab_admin_pw', val); else if (get === 'clear') sessionStorage.removeItem('medilab_admin_pw'); else return sessionStorage.getItem('medilab_admin_pw'); }catch(e){}
+  return null;
+}
+function toast(msg, bad){ const t = $('toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200); }
+
+async function api(payload){
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+  return res.json();
+}
+
+/* ---------- login ---------- */
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = $('pw').value, msg = $('login-msg'), btn = $('login-btn');
+  msg.classList.remove('show');
+  if (!pw){ msg.textContent = 'Please enter the password.'; msg.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try{
+    const data = await api({ action:'list', password:pw });
+    if (data.ok){ state.pw = pw; store('set', pw); enter(data.bookings); }
+    else { msg.textContent = data.code === 'AUTH' ? 'Incorrect password. Please try again.' : (data.error || 'Could not sign in.'); msg.classList.add('show'); }
+  }catch(err){ msg.textContent = 'Could not reach the server. Check your internet connection and try again.'; msg.classList.add('show'); }
+  finally{ btn.disabled = false; btn.textContent = 'Sign in'; }
+});
+
+function enter(rows){
+  $('login').hidden = true; $('app').hidden = false; $('pw').value = '';
+  state.rows = rows; render(); stamp();
+  clearInterval(state.timer); state.timer = setInterval(() => load(true), 60000);
+}
+$('logout').addEventListener('click', () => {
+  store('clear'); state.pw = ''; state.rows = []; clearInterval(state.timer);
+  $('app').hidden = true; $('login').hidden = false; $('pw').focus();
+});
+
+/* ---------- data ---------- */
+async function load(silent){
+  const btn = $('refresh');
+  if (!silent){ btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try{
+    const data = await api({ action:'list', password:state.pw });
+    if (data.ok){ state.rows = data.bookings; render(); stamp(); if (!silent) toast('Appointments updated.'); }
+    else if (data.code === 'AUTH'){ $('logout').click(); }
+    else if (!silent) toast(data.error || 'Could not refresh.', true);
+  }catch(err){ if (!silent) toast('Could not reach the server.', true); }
+  finally{ btn.disabled = false; btn.textContent = 'Refresh'; }
+}
+$('refresh').addEventListener('click', () => load(false));
+function stamp(){ const d = new Date(); $('stamp').textContent = 'Updated ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+/* ---------- render ---------- */
+function slotMin(label){ const m = /^(\d{1,2}):(\d{2})\s(AM|PM)$/.exec(label || ''); if (!m) return 0; let h = parseInt(m[1],10) % 12; if (m[3] === 'PM') h += 12; return h*60 + parseInt(m[2],10); }
+function niceDate(k){ const p = String(k).split('-').map(Number); if (p.length !== 3) return esc(k); const d = new Date(p[0], p[1]-1, p[2]); return DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+function idNum(id){ const m = /(\d+)\s*$/.exec(id || ''); return m ? parseInt(m[1],10) : 0; }
+
+function visibleRows(){
+  const q = $('q').value.trim().toLowerCase(), scope = $('scope').value, sort = $('sort').value;
+  let rows = state.rows.filter((r) => {
+    if (state.filter !== 'all' && r.status !== state.filter) return false;
+    if (scope === 'today' && r.date !== TODAY_KEY) return false;
+    if (scope === 'upcoming' && r.date < TODAY_KEY) return false;
+    if (scope === 'past' && r.date >= TODAY_KEY) return false;
+    if (q && ![r.id, r.name, r.email, r.phone, r.service].some((v) => String(v || '').toLowerCase().indexOf(q) !== -1)) return false;
+    return true;
+  });
+  rows.sort((a, b) => sort === 'newest' ? idNum(b.id) - idNum(a.id) : (a.date < b.date ? -1 : a.date > b.date ? 1 : slotMin(a.time) - slotMin(b.time)));
+  return rows;
+}
+
+function render(){
+  const c = { all:state.rows.length, Pending:0, Confirmed:0, Cancelled:0 };
+  state.rows.forEach((r) => { if (c[r.status] != null) c[r.status]++; });
+  $('n-all').textContent = c.all; $('n-pending').textContent = c.Pending; $('n-confirmed').textContent = c.Confirmed; $('n-cancelled').textContent = c.Cancelled;
+  document.querySelectorAll('.tile').forEach((t) => t.classList.toggle('on', t.dataset.f === state.filter));
+
+  const rows = visibleRows(), body = $('rows');
+  body.innerHTML = rows.map((r) =>
+    '<tr class="' + (r.date === TODAY_KEY ? 'today' : '') + '" data-id="' + esc(r.id) + '">' +
+    '<td class="c-id"><span class="id">' + esc(r.id) + '</span></td>' +
+    '<td class="c-cust" data-l="Customer"><div class="cust"><b>' + esc(r.name) + '</b><span>' + esc(r.email) + '</span><span>' + esc(r.phone) + '</span></div></td>' +
+    '<td class="c-svc" data-l="Service">' + esc(r.service) + '</td>' +
+    '<td class="c-when" data-l="Appointment"><div class="when"><b>' + niceDate(r.date) + (r.date === TODAY_KEY ? ' (today)' : '') + '</b><span>' + esc(r.time) + '</span></div></td>' +
+    '<td class="c-status"><select class="status" data-s="' + esc(r.status) + '" data-prev="' + esc(r.status) + '" aria-label="Status for ' + esc(r.id) + '">' +
+      STATUSES.map((s) => '<option' + (s === r.status ? ' selected' : '') + '>' + s + '</option>').join('') + '</select></td>' +
+    '<td class="c-created" data-l="Booked on"><span class="created">' + esc(r.createdAt) + '</span></td></tr>'
+  ).join('');
+  const empty = $('empty');
+  if (!rows.length){ empty.hidden = false; empty.textContent = state.rows.length ? 'No appointments match these filters.' : 'No appointments yet. New bookings appear here automatically.'; }
+  else empty.hidden = true;
+}
+
+['q','scope','sort'].forEach((id) => $(id).addEventListener('input', render));
+$('tiles').addEventListener('click', (e) => { const t = e.target.closest('.tile'); if (!t) return; state.filter = t.dataset.f; render(); });
+
+/* ---------- status update ---------- */
+$('rows').addEventListener('change', async (e) => {
+  const sel = e.target.closest('select.status'); if (!sel) return;
+  const tr = sel.closest('tr'), id = tr.dataset.id, next = sel.value, prev = sel.dataset.prev;
+  sel.disabled = true; sel.dataset.s = next;
+  try{
+    const data = await api({ action:'status', password:state.pw, id:id, status:next });
+    if (data.ok){
+      const row = state.rows.find((r) => r.id === id); if (row) row.status = next;
+      toast(id + ' marked ' + next + '.'); render();
+    } else {
+      sel.value = prev; sel.dataset.s = prev; toast(data.error || 'Could not update status.', true);
+      if (data.code === 'AUTH') $('logout').click();
+    }
+  }catch(err){ sel.value = prev; sel.dataset.s = prev; toast('Could not reach the server. Status not changed.', true); }
+  finally{ sel.disabled = false; }
+});
+
+/* ---------- resume session ---------- */
+(async function resume(){
+  const saved = store('get');
+  if (!saved) { $('pw').focus(); return; }
+  try{
+    const data = await api({ action:'list', password:saved });
+    if (data.ok){ state.pw = saved; enter(data.bookings); } else store('clear');
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
